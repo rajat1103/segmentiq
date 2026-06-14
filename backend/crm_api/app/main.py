@@ -17,6 +17,8 @@ from app.api.campaigns import router as campaign_router
 from app.api.communication_logs import router as communication_logs_router
 from app.api.auth import router as auth_router
 from app.api.seed import router as seed_router
+from app.api.ai import router as ai_router
+from app.api.channel_service import router as channel_router
 
 
 @asynccontextmanager
@@ -81,6 +83,8 @@ app.include_router(
 app.include_router(campaign_router)
 app.include_router(communication_logs_router)
 app.include_router(seed_router)
+app.include_router(ai_router)          # Phase 3: Groq AI
+app.include_router(channel_router)     # Phase 4: Async channel callback loop
 
 
 # ── Root + Health Endpoints ───────────────────────────────────────────────

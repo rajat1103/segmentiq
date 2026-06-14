@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Users, ShoppingCart, IndianRupee, TrendingUp, RefreshCw } from "lucide-react";
 
-import { getStats, getCityDistribution, getRevenueByCity, getCommunicationLogs } from "../services/api";
+import { getStats, getCityDistribution, getRevenueByCity } from "../services/api";
+
 import SciFiGlobe from "../components/SciFiGlobe";
 import IndiaTopoMap from "../components/IndiaTopoMap";
 import EmptyState from "../components/EmptyState";
@@ -110,42 +111,49 @@ function LeadFunnel({ stats }) {
 /* ── Channel Performance Widget ────────────────────────── */
 function CommunicationSummary({ stats }) {
   const isDark = document.documentElement.classList.contains("dark");
-  const successRate = stats.total ? Math.round((stats.sent / stats.total) * 100) : 0;
-  const pendingRate = stats.total ? Math.round((stats.pending / stats.total) * 100) : 0;
-  const failedRate = stats.total ? Math.round((stats.failed / stats.total) * 100) : 0;
+  const deliveredRate = stats.total ? Math.round(((stats.delivered || 0) / stats.total) * 100) : 0;
+  const clickedRate   = stats.total ? Math.round(((stats.clicked   || 0) / stats.total) * 100) : 0;
+  const failedRate    = stats.total ? Math.round(((stats.failed    || 0) / stats.total) * 100) : 0;
+  const successRate   = stats.total ? Math.round((((stats.delivered || 0) + (stats.clicked || 0)) / stats.total) * 100) : 0;
 
   const rows = [
-    { label: "Sent", value: stats.sent, color: "#10b981", rate: `${successRate}%` },
-    { label: "Pending", value: stats.pending, color: "#f59e0b", rate: `${pendingRate}%` },
-    { label: "Failed", value: stats.failed, color: "#ef4444", rate: `${failedRate}%` },
+    { label: "Sent",      value: stats.sent      || 0, color: "#0ea5e9", rate: `${stats.total ? Math.round(((stats.sent||0)/stats.total)*100) : 0}%` },
+    { label: "Delivered", value: stats.delivered || 0, color: "#10b981", rate: `${deliveredRate}%` },
+    { label: "Clicked",   value: stats.clicked   || 0, color: "#6366f1", rate: `${clickedRate}%` },
+    { label: "Failed",    value: stats.failed    || 0, color: "#ef4444", rate: `${failedRate}%` },
+    { label: "Pending",   value: stats.pending   || 0, color: "#f59e0b", rate: `${stats.total ? Math.round(((stats.pending||0)/stats.total)*100) : 0}%` },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: "160px", padding: "14px", borderRadius: "16px", background: isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.85)", border: isDark ? "1px solid rgba(71,85,105,0.48)" : "1px solid rgba(226,232,240,0.72)" }}>
+        <div style={{ flex: 1, minWidth: "140px", padding: "14px", borderRadius: "16px", background: isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.85)", border: isDark ? "1px solid rgba(71,85,105,0.48)" : "1px solid rgba(226,232,240,0.72)" }}>
           <p style={{ margin: 0, fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 700 }}>Total Messages</p>
-          <p style={{ margin: "8px 0 0", fontSize: "28px", fontWeight: 800, color: "var(--color-text-primary)" }}>{stats.total.toLocaleString("en-IN")}</p>
+          <p style={{ margin: "8px 0 0", fontSize: "28px", fontWeight: 800, color: "var(--color-text-primary)" }}>{(stats.total || 0).toLocaleString("en-IN")}</p>
         </div>
-        <div style={{ flex: 1, minWidth: "160px", padding: "14px", borderRadius: "16px", background: isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.85)", border: isDark ? "1px solid rgba(71,85,105,0.48)" : "1px solid rgba(226,232,240,0.72)" }}>
+        <div style={{ flex: 1, minWidth: "140px", padding: "14px", borderRadius: "16px", background: isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.85)", border: isDark ? "1px solid rgba(71,85,105,0.48)" : "1px solid rgba(226,232,240,0.72)" }}>
           <p style={{ margin: 0, fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 700 }}>Delivery Success</p>
           <p style={{ margin: "8px 0 0", fontSize: "28px", fontWeight: 800, color: "#10b981" }}>{successRate}%</p>
         </div>
       </div>
-      <div style={{ display: "grid", gap: "10px" }}>
+      <div style={{ display: "grid", gap: "8px" }}>
         {rows.map((item) => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: "12px", background: isDark ? "rgba(15,23,42,0.72)" : "rgba(247,250,255,0.82)", border: isDark ? "1px solid rgba(71,85,105,0.40)" : "1px solid rgba(226,232,240,0.68)" }}>
-            <div>
+          <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", background: isDark ? "rgba(15,23,42,0.72)" : "rgba(247,250,255,0.82)", border: isDark ? "1px solid rgba(71,85,105,0.40)" : "1px solid rgba(226,232,240,0.68)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
               <p style={{ margin: 0, fontSize: "11px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</p>
-              <p style={{ margin: "6px 0 0", fontSize: "16px", fontWeight: 800, color: item.color }}>{item.value.toLocaleString("en-IN")}</p>
             </div>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-secondary)" }}>{item.rate}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <p style={{ margin: 0, fontSize: "15px", fontWeight: 800, color: item.color }}>{item.value.toLocaleString("en-IN")}</p>
+              <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-secondary)", background: `${item.color}15`, padding: "1px 6px", borderRadius: "99px" }}>{item.rate}</span>
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 }
+
 
 /* ── Glass Panel Wrapper ───────────────────────────────── */
 function GlassPanel({ title, subtitle, children, widthStyle = "1fr" }) {
@@ -231,31 +239,27 @@ export default function Dashboard() {
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, cityRes, revenueRes, logsRes] = await Promise.all([
+      const [statsRes, cityRes, revenueRes] = await Promise.all([
         getStats(),
         getCityDistribution(),
         getRevenueByCity(),
-        getCommunicationLogs(),
       ]);
 
-      setStats(statsRes.data);
+      const data = statsRes.data;
+      setStats(data);
       setCities((cityRes.data || []).map((item) => ({ ...item, count: item.customers ?? item.count })));
       setRevenue(revenueRes.data || []);
 
-      const logs = Array.isArray(logsRes.data) ? logsRes.data : [];
-      const summary = logs.reduce(
-        (acc, log) => {
-          const status = String(log.status || "PENDING").toUpperCase();
-          if (status === "SENT") acc.sent += 1;
-          else if (status === "FAILED") acc.failed += 1;
-          else acc.pending += 1;
-          acc.total += 1;
-          return acc;
-        },
-        { sent: 0, failed: 0, pending: 0, total: 0 }
-      );
+      // Use comm breakdown directly from the stats endpoint (Phase 4 data)
+      setCommStats({
+        sent:      (data.comm_sent      || 0) + (data.comm_delivered || 0) + (data.comm_clicked || 0),
+        delivered: data.comm_delivered  || 0,
+        clicked:   data.comm_clicked    || 0,
+        failed:    data.comm_failed     || 0,
+        pending:   data.comm_pending    || 0,
+        total:     data.comm_total      || 0,
+      });
 
-      setCommStats(summary);
       setLastFetched(new Date());
     } catch (err) {
       console.error("Dashboard loading failure:", err);
@@ -263,6 +267,7 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, []);
+
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 

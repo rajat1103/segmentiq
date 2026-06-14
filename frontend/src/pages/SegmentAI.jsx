@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { PrismLogo } from "../components/Logo";
+import { aiChat, aiGenerateSegment, aiGenerateMessage } from "../services/api";
 import {
   Sparkles, Send, Upload, FileText, Trash2, X, Plus,
   Brain, Search, MessageSquare, ChevronRight, Clock,
@@ -10,28 +11,6 @@ import {
   Maximize2, ArrowUpRight,
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════
-   CONSTANTS & CONFIG
-   ═══════════════════════════════════════════════════════ */
-
-const PROMPT_TEMPLATES = [
-  { id: 1, icon: Users,      label: "Segment Summary", prompt: "Summarize the customer segment most likely to convert this month." },
-  { id: 2, icon: BarChart3,  label: "Retention Review", prompt: "Review customer retention trends and identify where engagement is dropping." },
-  { id: 3, icon: FileSearch, label: "Data Diagnostics", prompt: "Which CRM data sources should I connect to improve audience targeting?" },
-  { id: 4, icon: Zap,        label: "Campaign Check", prompt: "What should I know before launching a new campaign this quarter?" },
-  { id: 5, icon: Brain,      label: "Insight Request", prompt: "What are the highest-priority operational signals in my customer data?" },
-  { id: 6, icon: Tag,        label: "Next Step", prompt: "Suggest the next analytics task for customer segmentation." },
-];
-
-const ACCEPTED_TYPES = {
-  "application/pdf":       { label: "PDF",   color: "#ef4444", bg: "#fee2e2" },
-  "text/csv":              { label: "CSV",   color: "#10b981", bg: "#f0fdf4" },
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                           { label: "XLSX",  color: "#0ea5e9", bg: "#f0f9ff" },
-  "text/plain":            { label: "TXT",   color: "#6366f1", bg: "#eef2ff" },
-  "image/png":             { label: "IMG",   color: "#8b5cf6", bg: "#f5f3ff" },
-  "image/jpeg":            { label: "IMG",   color: "#8b5cf6", bg: "#f5f3ff" },
-};
 
 function buildAiReply(query, attachments, docs) {
   const lines = [];
@@ -291,24 +270,49 @@ export default function SegmentAI() {
     setAttachments([]);
     setIsTyping(true);
 
-    await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+    try {
+      // Build message history for context (last 12 messages)
+      const currentMessages = sessions.find(s => s.id === activeSession)?.messages || [];
+      const historyForApi = [...currentMessages, userMsg]
+        .slice(-12)
+        .map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.content }));
 
-    const readyDocs = kbDocs.filter(d => d.status === "ready");
-    const aiResponse = buildAiReply(text, attachments, readyDocs);
-    const aiMsg = {
-      id: Date.now() + 1,
-      role: "ai",
-      content: aiResponse,
-      ts: new Date(),
-      sources: readyDocs.slice(0, 2).map(d => d.name),
-    };
+      // Call real Groq API
+      const res = await aiChat(historyForApi);
+      const aiReply = res.data.reply;
 
-    setIsTyping(false);
-    setSessions(prev => prev.map((session) => {
-      if (session.id !== activeSession) return session;
-      return { ...session, messages: [...session.messages, aiMsg] };
-    }));
-  }, [input, attachments, kbDocs]);
+      const aiMsg = {
+        id: Date.now() + 1,
+        role: "ai",
+        content: aiReply,
+        ts: new Date(),
+        sources: [],
+        model: res.data.model,
+        tokens: res.data.tokens_used,
+      };
+
+      setSessions(prev => prev.map((session) => {
+        if (session.id !== activeSession) return session;
+        return { ...session, messages: [...session.messages, aiMsg] };
+      }));
+    } catch (err) {
+      const errorMsg = err?.response?.data?.detail || "Failed to reach Prism AI. Check that GROQ_API_KEY is set in Render.";
+      const aiMsg = {
+        id: Date.now() + 1,
+        role: "ai",
+        content: `⚠️ **Connection Error**\n\n${errorMsg}\n\nPlease verify your Groq API key is correctly set in the Render dashboard environment variables.`,
+        ts: new Date(),
+        sources: [],
+      };
+      setSessions(prev => prev.map((session) => {
+        if (session.id !== activeSession) return session;
+        return { ...session, messages: [...session.messages, aiMsg] };
+      }));
+    } finally {
+      setIsTyping(false);
+    }
+  }, [input, attachments, sessions, activeSession]);
+
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }

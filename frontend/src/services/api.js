@@ -3,9 +3,6 @@ import axios from "axios";
 
 /* ═══════════════════════════════════════════════════════
    SEGMENTIQ CRM — Axios API Client
-   Base URL reads from Vite env var for multi-cloud deploy:
-   - Local dev:   VITE_API_URL = http://127.0.0.1:8000
-   - Production:  VITE_API_URL = https://your-render-app.onrender.com
    ═══════════════════════════════════════════════════════ */
 
 const API = axios.create({
@@ -62,6 +59,8 @@ export const getRevenueByCity = () => API.get("/dashboard/revenue-by-city");
 
 export const getGenderDistribution = () => API.get("/dashboard/gender-distribution");
 
+export const getMonthlyRevenue = () => API.get("/dashboard/monthly-revenue");
+
 /* ═══════════════════════════════════════════════════════
    CUSTOMERS
    ═══════════════════════════════════════════════════════ */
@@ -112,16 +111,39 @@ export const createCommunicationLog = (payload) => API.post("/communication-logs
    SEED / ONBOARDING
    ═══════════════════════════════════════════════════════ */
 
-/**
- * Seed the backend database with demo data for new users.
- * Returns summary: { customers_created, orders_created, campaigns_created, total_revenue }
- */
 export const seedDatabase = () => API.post("/seed");
 
-/**
- * Reset all data in the backend database.
- * Use with caution — deletes all customers, orders, campaigns, logs.
- */
 export const resetDatabase = () => API.delete("/seed/reset");
+
+/* ═══════════════════════════════════════════════════════
+   PHASE 3: GROQ AI ENDPOINTS
+   ═══════════════════════════════════════════════════════ */
+
+/**
+ * Main AI chat — sends message history, receives Groq response.
+ * @param {Array} messages - [{role: "user"|"assistant", content: string}]
+ */
+export const aiChat = (messages, model = "llama-3.3-70b-versatile") =>
+  API.post("/ai/chat", { messages, model });
+
+/**
+ * Convert natural language to CRM segment query.
+ * @param {string} description - "High spenders in Mumbai"
+ */
+export const aiGenerateSegment = (description) =>
+  API.post("/ai/generate-segment", { description });
+
+/**
+ * Generate 3 campaign message variants for a segment.
+ */
+export const aiGenerateMessage = (payload) =>
+  API.post("/ai/generate-message", payload);
+
+/* ═══════════════════════════════════════════════════════
+   PHASE 4: CHANNEL SERVICE ENDPOINTS
+   ═══════════════════════════════════════════════════════ */
+
+/** Get delivery status breakdown across all campaigns */
+export const getChannelStats = () => API.get("/channel/stats");
 
 export default API;

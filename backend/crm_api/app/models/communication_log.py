@@ -27,19 +27,28 @@ class CommunicationLog(Base):
         ForeignKey("customers.id")
     )
 
+    # Status flow: PENDING → SENT → DELIVERED → CLICKED  (or → FAILED)
     status = Column(
         String,
-        default="PENDING"
+        default="PENDING",
+        index=True
     )
 
     channel_message_id = Column(
         String,
-        nullable=True
+        nullable=True,
+        index=True          # Needed for fast callback lookups
     )
 
+    # Timestamps
     sent_at = Column(
         DateTime,
         default=datetime.utcnow
+    )
+
+    delivered_at = Column(
+        DateTime,
+        nullable=True       # Set when status becomes DELIVERED or CLICKED
     )
 
     campaign = relationship(
