@@ -64,6 +64,8 @@ export const getGenderDistribution = () => API.get("/dashboard/gender-distributi
 
 export const getMonthlyRevenue = () => API.get("/dashboard/monthly-revenue");
 
+export const getAgeDistribution = () => API.get("/dashboard/age-distribution");
+
 /* ═══════════════════════════════════════════════════════
    CUSTOMERS
    ═══════════════════════════════════════════════════════ */

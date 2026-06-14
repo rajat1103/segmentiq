@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { PrismLogo } from "../components/Logo";
 import { aiChat, aiGenerateSegment, aiGenerateMessage } from "../services/api";
+import { useDataset } from "../context/DatasetContext";
 import {
   Sparkles, Send, Upload, FileText, Trash2, X, Plus,
   Brain, Search, MessageSquare, ChevronRight, Clock,
@@ -249,6 +250,50 @@ export default function SegmentAI() {
   const [kbDocs, setKbDocs] = useState([]);
   const [dragOver,   setDragOver]   = useState(false);
   const kbFileRef = useRef(null);
+  const { dataset } = useDataset();
+
+  /* ── Auto-inject dataset from DatasetContext ──────── */
+  useEffect(() => {
+    if (!dataset) return;
+    const docId = `dataset-ctx-${dataset.uploadedAt}`;
+    setKbDocs(prev => {
+      const alreadyLoaded = prev.some(d => d.id === docId);
+      if (alreadyLoaded) return prev;
+      return [
+        {
+          id:     docId,
+          name:   dataset.fileName,
+          size:   `${dataset.totalRows} rows`,
+          type:   "text/csv",
+          status: "ready",
+          chunks: dataset.totalRows,
+          tags:   ["auto-synced", "customers"],
+          fromContext: true,
+        },
+        ...prev,
+      ];
+    });
+  }, [dataset]);
+
+  /* ── Build dataset system context for API ─────────── */
+  const buildDatasetContext = useCallback(() => {
+    if (!dataset) return null;
+    const s = dataset.summary || {};
+    return `You are Prism AI, an analytics assistant for the SegmentIQ CRM platform. The user has uploaded a customer dataset with the following details:
+- File: ${dataset.fileName}
+- Uploaded: ${new Date(dataset.uploadedAt).toLocaleString()}
+- Total customers: ${s.totalCustomers}
+- Cities represented: ${(s.cities || []).join(", ")}
+- Gender breakdown: ${JSON.stringify(s.genderBreakdown)}
+- Average customer age: ${s.averageAge} years
+- Total revenue: ₹${s.totalRevenue}
+- Average spend per customer: ₹${s.avgSpend}
+
+First few rows of the CSV data (for reference):
+${(dataset.csvText || "").split("\n").slice(0, 8).join("\n")}
+
+Answer questions about this dataset accurately and concisely. When asked about segments, revenue, trends, or campaign ideas, base your answers on the data above.`;
+  }, [dataset]);
 
   const activeSessionData = sessions.find((s) => s.id === activeSession) || sessions[0];
   const activeMessages = activeSessionData?.messages || [];
@@ -286,8 +331,18 @@ export default function SegmentAI() {
         .slice(-12)
         .map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.content }));
 
+      // Prepend dataset system context if available
+      const systemCtx = buildDatasetContext();
+      const apiMessages = systemCtx
+        ? [
+            { role: "user",      content: systemCtx },
+            { role: "assistant", content: "Understood! I have full context of your uploaded customer dataset and am ready to answer questions about it." },
+            ...historyForApi,
+          ]
+        : historyForApi;
+
       // Call real Groq API
-      const res = await aiChat(historyForApi);
+      const res = await aiChat(apiMessages);
       const aiReply = res.data.reply;
 
       const aiMsg = {

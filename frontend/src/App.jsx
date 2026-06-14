@@ -21,6 +21,7 @@ import Signup            from "./pages/Signup";
 import Welcome           from "./pages/Welcome";
 import Layout            from "./components/Layout";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { DatasetProvider } from "./context/DatasetContext";
 
 /* ── ProtectedRoute ──────────────────────────────────────── */
 function ProtectedRoute() {
@@ -54,38 +55,40 @@ function ProtectedRoute() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <DatasetProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
 
-          {/* ── Public Routes ───────────────────────────── */}
-          <Route path="/login"  element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+            {/* ── Public Routes ───────────────────────────── */}
+            <Route path="/login"  element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-          {/* ── Welcome Onboarding Route ────────────────── */}
-          <Route path="/welcome" element={<Welcome />} />
+            {/* ── Welcome Onboarding Route ────────────────── */}
+            <Route path="/welcome" element={<Welcome />} />
 
-          {/* ── Protected Routes ────────────────────────── */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/"                   element={<Navigate to="/command-center" replace />} />
-            <Route path="/command-center"     element={<CommandCenter />} />
-            <Route path="/dashboard"          element={<Dashboard />} />
-            <Route path="/analytics"          element={<Analytics />} />
-            <Route path="/customers"          element={<Customers />} />
-            <Route path="/campaigns"          element={<Campaigns />} />
-            <Route path="/communication-logs" element={<CommunicationLogs />} />
-            <Route path="/segment-ai"         element={<SegmentAI />} />
-            <Route path="/calendar"           element={<Calendar />} />
-            <Route path="/settings"           element={<Settings />} />
-            <Route path="/help"               element={<Help />} />
-          </Route>
+            {/* ── Protected Routes ────────────────────────── */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/"                   element={<Navigate to="/command-center" replace />} />
+              <Route path="/command-center"     element={<CommandCenter />} />
+              <Route path="/dashboard"          element={<Dashboard />} />
+              <Route path="/analytics"          element={<Analytics />} />
+              <Route path="/customers"          element={<Customers />} />
+              <Route path="/campaigns"          element={<Campaigns />} />
+              <Route path="/communication-logs" element={<CommunicationLogs />} />
+              <Route path="/segment-ai"         element={<SegmentAI />} />
+              <Route path="/calendar"           element={<Calendar />} />
+              <Route path="/settings"           element={<Settings />} />
+              <Route path="/help"               element={<Help />} />
+            </Route>
 
-          {/* ── Catch-all ────────────────────────────────── */}
-          <Route path="*" element={<Navigate to="/command-center" replace />} />
+            {/* ── Catch-all ────────────────────────────────── */}
+            <Route path="*" element={<Navigate to="/command-center" replace />} />
 
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </DatasetProvider>
   );
 }
 

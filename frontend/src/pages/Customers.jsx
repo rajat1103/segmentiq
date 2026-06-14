@@ -13,6 +13,7 @@ import {
 } from "../services/api";
 import EmptyState from "../components/EmptyState";
 import CSVUploadModal from "../components/CSVUploadModal";
+import PrismFab from "../components/PrismFab";
 
 const PAGE_SIZE = 15;
 
@@ -527,7 +528,10 @@ export default function Customers() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [custRes, statRes] = await Promise.all([getCustomers(), getCustomerStats()]);
+      const [custRes, statRes] = await Promise.all([
+        getCustomers({ limit: 2000, skip: 0 }),
+        getCustomerStats()
+      ]);
       setCustomers(custRes.data || []);
       setStats(statRes.data);
     } catch (err) {
@@ -822,6 +826,7 @@ export default function Customers() {
         @keyframes slideFromRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes crmFadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
+      <PrismFab />
     </>
   );
 }

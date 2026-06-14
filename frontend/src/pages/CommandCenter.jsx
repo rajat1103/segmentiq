@@ -5,10 +5,13 @@ import {
   ArrowRight, BarChart3, Target, Activity, Sparkles,
   ChevronRight, AlertTriangle, CheckCircle2, Clock,
   ArrowUpRight, Play, Plus, UserPlus, Calendar,
+  Upload, Server, Database, Loader2,
 } from "lucide-react";
-import { getStats, getCampaigns } from "../services/api";
+import { getStats, getCampaigns, seedDatabase, resetDatabase } from "../services/api";
 import PlasmaGlobe from "../components/PlasmaGlobe";
 import { useAuth } from "../context/AuthContext";
+import toast, { Toaster } from "react-hot-toast";
+import CSVUploadModal from "../components/CSVUploadModal";
 
 /* ═══════════════════════════════════════════════════════════
    CIRCULAR GAUGE COMPONENT
@@ -236,6 +239,8 @@ export default function CommandCenter() {
   const [stats,     setStats]     = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const { user } = useAuth();
 
@@ -248,24 +253,56 @@ export default function CommandCenter() {
     hour < 12 ? "Good morning" :
     hour < 17 ? "Good afternoon" : "Good evening";
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const [statsRes, campRes] = await Promise.all([
-          getStats().catch(() => ({ data: null })),
-          getCampaigns({ limit: 12 }).catch(() => ({ data: [] })),
-        ]);
-        setStats(statsRes.data);
-        setCampaigns(Array.isArray(campRes.data) ? campRes.data : []);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [statsRes, campRes] = await Promise.all([
+        getStats().catch(() => ({ data: null })),
+        getCampaigns({ limit: 12 }).catch(() => ({ data: [] })),
+      ]);
+      setStats(statsRes.data);
+      setCampaigns(Array.isArray(campRes.data) ? campRes.data : []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSeedSampleData = async () => {
+    setActionLoading(true);
+    const tId = toast.loading("Seeding database with sample customers...");
+    try {
+      await seedDatabase();
+      toast.success("Sample dataset loaded successfully!", { id: tId });
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to seed sample data. Is the backend running?", { id: tId });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartFresh = async () => {
+    if (!confirm("Are you sure you want to reset the database to a clean slate? All customer telemetry will be cleared.")) return;
+    setActionLoading(true);
+    const tId = toast.loading("Resetting database to clean slate...");
+    try {
+      await resetDatabase();
+      toast.success("Database initialized to clean slate!", { id: tId });
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to reset database.", { id: tId });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fmt   = (n) => n != null ? Number(n).toLocaleString("en-IN") : "—";
   const fmtRs = (n) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
@@ -415,6 +452,50 @@ export default function CommandCenter() {
               <PlasmaGlobe height="220px" />
             </Suspense>
           </div>
+        </div>
+      </div>
+
+      {/* ── Workspace Data Ingestion ──────────────────── */}
+      <div className="glass-card" style={{
+        padding: "16px 20px",
+        marginBottom: "20px",
+        background: "rgba(255, 255, 255, 0.45)",
+        border: "1px solid rgba(255, 255, 255, 0.30)",
+        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.03)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "16px",
+        animation: "crmFadeIn 0.35s ease"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: "40px", height: "40px", borderRadius: "10px",
+            background: "rgba(99, 102, 241, 0.10)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Database size={20} color="#6366f1" />
+          </div>
+          <div>
+            <p style={{ fontSize: "14px", fontWeight: 700, color: "#1a1d2e", margin: 0 }}>Workspace Data Ingestion</p>
+            <p style={{ fontSize: "11.5px", color: "#64748b", margin: 0 }}>Choose your initial database setup or upload a custom CSV dataset.</p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button onClick={() => setShowUploadModal(true)} className="glass-btn-primary" style={{ fontSize: "12px", gap: "6px" }}>
+            <Upload size={13} />
+            Import CSV
+          </button>
+          <button onClick={handleSeedSampleData} disabled={actionLoading} className="glass-btn-secondary" style={{ fontSize: "12px", gap: "6px" }}>
+            {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Database size={13} />}
+            Load Sample Dataset
+          </button>
+          <button onClick={handleStartFresh} disabled={actionLoading} className="glass-btn-secondary" style={{ fontSize: "12px", gap: "6px", color: "#ef4444" }}>
+            {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <Server size={13} />}
+            Empty Database (Clean Slate)
+          </button>
         </div>
       </div>
 
@@ -574,6 +655,12 @@ export default function CommandCenter() {
         </div>
 
       </div>
+      <CSVUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={load}
+      />
+      <Toaster position="top-right" />
     </div>
   );
 }

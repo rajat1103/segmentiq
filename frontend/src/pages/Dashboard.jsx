@@ -1,11 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
-import { Users, ShoppingCart, IndianRupee, TrendingUp, RefreshCw, Upload } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Users, ShoppingCart, IndianRupee, TrendingUp, RefreshCw, Upload, Database, Server, ChevronDown } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
-import { getStats, getCityDistribution, getRevenueByCity } from "../services/api";
+import { getStats, getCityDistribution, getRevenueByCity, seedDatabase, resetDatabase } from "../services/api";
 
 import SciFiGlobe from "../components/SciFiGlobe";
 import CSVUploadModal from "../components/CSVUploadModal";
 import EmptyState from "../components/EmptyState";
+import PrismFab from "../components/PrismFab";
 
 /* ── Circle Gauge Component ────────────────────────────── */
 function CircleGauge({ value, max = 100, label, sublabel, color, size = 80 }) {
@@ -235,6 +237,52 @@ export default function Dashboard() {
   const [loading,    setLoading]    = useState(true);
   const [lastFetched, setLastFetched] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const menuRef = useRef(null);
+
+  const handleSeedSampleData = async () => {
+    setShowMenu(false);
+    setActionLoading(true);
+    const tId = toast.loading("Seeding database with sample customers...");
+    try {
+      await seedDatabase();
+      toast.success("Sample dataset loaded successfully!", { id: tId });
+      loadDashboard();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to seed sample data. Is the backend running?", { id: tId });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartFresh = async () => {
+    setShowMenu(false);
+    if (!confirm("Are you sure you want to reset the database to a clean slate? All customer telemetry will be cleared.")) return;
+    setActionLoading(true);
+    const tId = toast.loading("Resetting database to clean slate...");
+    try {
+      await resetDatabase();
+      toast.success("Database initialized to clean slate!", { id: tId });
+      loadDashboard();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to reset database.", { id: tId });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -292,10 +340,76 @@ export default function Dashboard() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
-          <button onClick={() => setShowUploadModal(true)} className="glass-btn-primary" style={{ fontSize: "12px", gap: "6px" }}>
-            <Upload size={12} />
-            Import CSV
-          </button>
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="glass-btn-primary"
+              style={{ fontSize: "12px", gap: "6px" }}
+            >
+              <Database size={12} />
+              Workspace Ingestion
+              <ChevronDown size={12} style={{ transform: showMenu ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
+            {showMenu && (
+              <div className="glass-card" style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                width: "220px",
+                zIndex: 40,
+                padding: "6px",
+                background: "rgba(255, 255, 255, 0.95)",
+                border: "1px solid rgba(226, 232, 240, 0.8)",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                borderRadius: "10px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px"
+              }}>
+                <button
+                  onClick={() => { setShowMenu(false); setShowUploadModal(true); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    padding: "8px 10px", borderRadius: "6px", border: "none",
+                    background: "transparent", color: "var(--color-text-primary)",
+                    fontSize: "12px", cursor: "pointer", textAlign: "left", width: "100%"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--color-surface-hover)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <Upload size={12} color="#6366f1" /> Import Customer CSV
+                </button>
+                <button
+                  onClick={handleSeedSampleData}
+                  disabled={actionLoading}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    padding: "8px 10px", borderRadius: "6px", border: "none",
+                    background: "transparent", color: "var(--color-text-primary)",
+                    fontSize: "12px", cursor: "pointer", textAlign: "left", width: "100%"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--color-surface-hover)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <Database size={12} color="#10b981" /> Load Sample Dataset
+                </button>
+                <button
+                  onClick={handleStartFresh}
+                  disabled={actionLoading}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    padding: "8px 10px", borderRadius: "6px", border: "none",
+                    background: "transparent", color: "#ef4444",
+                    fontSize: "12px", cursor: "pointer", textAlign: "left", width: "100%"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--color-surface-hover)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <Server size={12} color="#ef4444" /> Empty DB (Clean Slate)
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={loadDashboard} disabled={loading} className="glass-btn-secondary" style={{ fontSize: "12px", gap: "6px" }}>
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             Refresh
@@ -406,6 +520,8 @@ export default function Dashboard() {
         onClose={() => setShowUploadModal(false)}
         onSuccess={loadDashboard}
       />
+      <PrismFab />
+      <Toaster position="top-right" />
     </>
   );
 }

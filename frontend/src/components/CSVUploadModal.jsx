@@ -1,21 +1,31 @@
 /**
  * CSVUploadModal.jsx — Reusable CSV database importer modal.
  * Premium Glassmorphic design conforming to the application standard.
+ *
+ * FIXES:
+ *  - Replaced broken regex CSV parser with a standards-compliant state-machine
+ *    parser that correctly handles quoted fields, embedded commas, and newlines.
+ *    This eliminates the "100 rows → 300 customers" tripling bug.
+ *  - After successful import: stores raw CSV + summary in DatasetContext so
+ *    Prism AI can access it without requiring a separate file upload.
  */
 import React, { useState, useRef } from "react";
-import { X, Upload, FileSpreadsheet, Check, Loader2, Play } from "lucide-react";
+import { X, Upload, FileSpreadsheet, Check, Loader2, Play, Database } from "lucide-react";
 import toast from "react-hot-toast";
 import { importCustomersBulk } from "../services/api";
+import { useDataset } from "../context/DatasetContext";
 
 export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
-  const [csvFile, setCsvFile] = useState(null);
+  const [csvFile,    setCsvFile]    = useState(null);
+  const [csvRawText, setCsvRawText] = useState("");
   const [parsedRows, setParsedRows] = useState([]);
-  const [importing, setImporting] = useState(false);
+  const [importing,  setImporting]  = useState(false);
   const fileInputRef = useRef(null);
+  const { setDataset } = useDataset();
 
   if (!isOpen) return null;
 
-  // Handle file select
+  /* ── Drag & Drop ──────────────────────────────────────── */
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) handleCSVFile(file);
@@ -30,7 +40,8 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target.result;
-      const rows = parseCSVText(text);
+      setCsvRawText(text);
+      const rows = parseCSV(text);
       if (rows.length === 0) {
         toast.error("No valid records found in this CSV.");
       } else {
@@ -41,71 +52,156 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
     reader.readAsText(file);
   };
 
-  // CSV parsing engine
-  const parseCSVText = (text) => {
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return [];
+  /* ── Standards-compliant CSV parser (RFC 4180) ────────────────────────
+     Handles:
+       • Quoted fields containing commas, newlines, and escaped quotes ("")
+       • Windows (CRLF) and Unix (LF) line endings
+       • Leading/trailing whitespace outside quotes
+   ───────────────────────────────────────────────────────────────────── */
+  const parseCSV = (text) => {
+    const DELIMITER = ",";
+    const rows = [];
+    let insideQuote = false;
+    let currentField = "";
+    let currentRow = [];
 
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+
+      if (ch === '"') {
+        if (insideQuote && next === '"') {
+          // Escaped quote inside a quoted field
+          currentField += '"';
+          i++; // skip next quote
+        } else {
+          insideQuote = !insideQuote;
+        }
+      } else if (ch === DELIMITER && !insideQuote) {
+        currentRow.push(currentField.trim());
+        currentField = "";
+      } else if ((ch === "\n" || (ch === "\r" && next === "\n")) && !insideQuote) {
+        if (ch === "\r") i++; // skip the \n of CRLF
+        currentRow.push(currentField.trim());
+        currentField = "";
+        if (currentRow.some(f => f !== "")) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+      } else if (ch === "\r" && !insideQuote) {
+        // Lone CR (old Mac line ending)
+        currentRow.push(currentField.trim());
+        currentField = "";
+        if (currentRow.some(f => f !== "")) rows.push(currentRow);
+        currentRow = [];
+      } else {
+        currentField += ch;
+      }
+    }
+
+    // Flush remaining field/row
+    currentRow.push(currentField.trim());
+    if (currentRow.some(f => f !== "")) rows.push(currentRow);
+
+    if (rows.length < 2) return [];
+
+    // First row = headers
+    const headers = rows[0].map(h => h.toLowerCase().replace(/['"]/g, "").trim());
     const data = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      // Basic CSV regex matching values inside/outside quotes
-      const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-      const row = matches.map((val) => val.trim().replace(/^"|"$/g, ""));
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
       const obj = {};
-      headers.forEach((header, index) => {
-        obj[header] = row[index] || "";
+      headers.forEach((header, idx) => {
+        obj[header] = (row[idx] || "").replace(/^"|"$/g, "").trim();
       });
-      data.push(obj);
+      // Skip completely blank rows
+      if (Object.values(obj).some(v => v !== "")) {
+        data.push(obj);
+      }
     }
+
     return data;
   };
 
-  // Row mapping logic matching Welcome.jsx but supporting total_spent
+  /* ── Field mapping ────────────────────────────────────── */
   const mapCSVRowToCustomer = (row) => {
     const findValue = (keys) => {
-      const foundKey = Object.keys(row).find((k) => keys.some((key) => k.includes(key)));
+      const foundKey = Object.keys(row).find(k =>
+        keys.some(key => k.includes(key))
+      );
       return foundKey ? row[foundKey] : "";
     };
 
-    const name = findValue(["name"]) || "Unknown Customer";
-    const email = findValue(["email", "mail"]) || `${name.toLowerCase().replace(/\s+/g, ".")}@segmentiq-user.in`;
-    const phone = findValue(["phone", "mobile", "tel"]) || null;
-    const cityVal = findValue(["city", "town", "loc"]) || "Bangalore";
-    const cities = ["Bangalore", "Delhi", "Chennai", "Pune", "Hyderabad", "Mumbai"];
-    let city = cities.find((c) => c.toLowerCase() === cityVal.toLowerCase()) || "Bangalore";
+    const name      = findValue(["name"])                                    || "Unknown Customer";
+    const emailRaw  = findValue(["email", "mail"]);
+    const email     = emailRaw || `${name.toLowerCase().replace(/\s+/g, ".")}@segmentiq-user.in`;
+    const phone     = findValue(["phone", "mobile", "tel"]) || null;
+    const cityVal   = findValue(["city", "town", "loc"])    || "Bangalore";
 
-    const genderVal = findValue(["gender", "sex"]) || "Male";
-    const gender = ["Male", "Female", "Other"].find((g) => g.toLowerCase() === genderVal.toLowerCase()) || "Male";
+    const VALID_CITIES = ["Bangalore", "Delhi", "Chennai", "Pune", "Hyderabad", "Mumbai"];
+    const city = VALID_CITIES.find(c => c.toLowerCase() === cityVal.toLowerCase()) || cityVal || "Bangalore";
 
-    const age = parseInt(findValue(["age"]), 10) || 28;
-    const total_spend = parseFloat(findValue(["spent", "spend", "revenue", "amount"])) || 0.0;
+    const genderVal = findValue(["gender", "sex"])          || "Male";
+    const VALID_GENDERS = ["Male", "Female", "Other"];
+    const gender = VALID_GENDERS.find(g => g.toLowerCase() === genderVal.toLowerCase()) || "Male";
 
-    return {
-      name,
-      email,
-      phone,
-      city,
-      gender,
-      age,
-      total_spent: total_spend,
-    };
+    const age         = parseInt(findValue(["age"]), 10)    || 28;
+    const total_spent = parseFloat(findValue(["spent", "spend", "revenue", "amount", "total_spent"])) || 0.0;
+
+    return { name, email, phone, city, gender, age, total_spent };
   };
 
+  /* ── Import handler ───────────────────────────────────── */
   const handleImport = async () => {
     if (parsedRows.length === 0) return;
     setImporting(true);
 
     try {
-      const models = parsedRows.map((row) => mapCSVRowToCustomer(row));
-      
-      // Call bulk API
-      const res = await importCustomersBulk(models);
+      const models = parsedRows.map(row => mapCSVRowToCustomer(row));
+
+      // Deduplicate by email within the batch itself (CSV may have duplicate rows)
+      const seen = new Set();
+      const uniqueModels = models.filter(m => {
+        const key = m.email.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const res = await importCustomersBulk(uniqueModels);
       const { imported, updated } = res.data;
-      
+
       toast.success(`Successfully imported ${imported} and updated ${updated} records!`);
+
+      // ── Sync dataset to Prism AI context ─────────────────
+      const cities = [...new Set(uniqueModels.map(m => m.city).filter(Boolean))];
+      const genders = uniqueModels.reduce((acc, m) => {
+        acc[m.gender] = (acc[m.gender] || 0) + 1;
+        return acc;
+      }, {});
+      const avgAge = uniqueModels.length
+        ? Math.round(uniqueModels.reduce((s, m) => s + (m.age || 0), 0) / uniqueModels.length)
+        : 0;
+      const totalRevenue = uniqueModels.reduce((s, m) => s + (m.total_spent || 0), 0);
+
+      setDataset({
+        fileName:     csvFile.name,
+        uploadedAt:   new Date().toISOString(),
+        totalRows:    uniqueModels.length,
+        csvText:      csvRawText,
+        summary: {
+          totalCustomers: uniqueModels.length,
+          cities,
+          genderBreakdown: genders,
+          averageAge: avgAge,
+          totalRevenue: totalRevenue.toFixed(2),
+          avgSpend: uniqueModels.length
+            ? (totalRevenue / uniqueModels.length).toFixed(2)
+            : "0.00",
+        },
+      });
+
       if (onSuccess) onSuccess();
       handleClose();
     } catch (err) {
@@ -118,11 +214,13 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
 
   const handleClose = () => {
     setCsvFile(null);
+    setCsvRawText("");
     setParsedRows([]);
     setImporting(false);
     onClose();
   };
 
+  /* ── UI ─────────────────────────────────────────────── */
   return (
     <>
       {/* Backdrop */}
@@ -147,8 +245,8 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, margin: 0 }}>
               Bulk Customer Ingestion
             </h2>
-            <p style={{ fontSize: "11.5px", color: "var(--color-text-muted)", margin: 0 }}>
-              Ingest spreadsheet records into the live database.
+            <p style={{ fontSize: "11.5px", color: "var(--color-text-muted)", margin: "2px 0 0" }}>
+              Ingest spreadsheet records · auto-syncs to Prism AI
             </p>
           </div>
           <button onClick={handleClose} disabled={importing} style={{
@@ -183,7 +281,7 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
                 Drag and drop customer CSV here
               </p>
               <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: 0 }}>
-                Click to browse files (accepts .csv)
+                Click to browse · accepts .csv · auto-syncs to Prism AI
               </p>
               <input
                 ref={fileInputRef}
@@ -210,25 +308,35 @@ export default function CSVUploadModal({ isOpen, onClose, onSuccess }) {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setCsvFile(null); setParsedRows([]); }}
+                  onClick={() => { setCsvFile(null); setParsedRows([]); setCsvRawText(""); }}
                   disabled={importing}
-                  style={{
-                    background: "transparent", border: "none", color: "#ef4444", fontSize: "11.5px", cursor: "pointer", fontWeight: 700
-                  }}
+                  style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "11.5px", cursor: "pointer", fontWeight: 700 }}
                 >
                   Clear
                 </button>
               </div>
 
-              {/* Mappings */}
+              {/* Field mapping confirmation */}
               <div style={{
                 display: "flex", gap: "8px", padding: "10px", borderRadius: "8px",
                 background: "rgba(16, 185, 129, 0.06)", border: "1px solid rgba(16, 185, 129, 0.15)",
-                marginBottom: "14px"
+                marginBottom: "10px"
               }}>
                 <Check size={14} color="#10b981" style={{ flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: "11px", color: "#065f46", margin: 0, lineHeight: 1.4 }}>
-                  Mapped: <strong>name</strong>, <strong>email</strong>, <strong>phone</strong>, <strong>city</strong>, <strong>gender</strong>, <strong>age</strong>, and <strong>total_spent</strong>. Real-time synchrony active.
+                  Mapped: <strong>name</strong>, <strong>email</strong>, <strong>phone</strong>, <strong>city</strong>, <strong>gender</strong>, <strong>age</strong>, and <strong>total_spent</strong>.
+                </p>
+              </div>
+
+              {/* Prism sync notice */}
+              <div style={{
+                display: "flex", gap: "8px", padding: "9px", borderRadius: "8px",
+                background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)",
+                marginBottom: "14px"
+              }}>
+                <Database size={13} color="#6366f1" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: "11px", color: "#4338ca", margin: 0, lineHeight: 1.4 }}>
+                  Dataset will be <strong>auto-synced to Prism AI</strong> — no separate upload needed.
                 </p>
               </div>
 

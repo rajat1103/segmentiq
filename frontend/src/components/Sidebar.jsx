@@ -23,7 +23,6 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
-/* Navigation items */
 const NAV_ITEMS = [
   {
     group: "Command",
@@ -40,6 +39,7 @@ const NAV_ITEMS = [
       { name: "Campaigns",          path: "/campaigns",          icon: Megaphone       },
       { name: "Communication Logs", path: "/communication-logs", icon: MessageSquare   },
       { name: "Festival Calendar",  path: "/calendar",           icon: Calendar        },
+      { name: "Prism AI",           path: "/segment-ai",         icon: null, isPrism: true, badge: "Beta" },
     ],
   },
   {
@@ -47,12 +47,6 @@ const NAV_ITEMS = [
     items: [
       { name: "Settings",           path: "/settings",           icon: Settings        },
       { name: "Help Center",        path: "/help",               icon: HelpCircle      },
-    ],
-  },
-  {
-    group: "AI Features",
-    items: [
-      { name: "Prism AI", path: "/segment-ai", icon: null, isPrism: true, badge: "Beta" },
     ],
   },
 ];

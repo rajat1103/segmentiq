@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
 import { SegmentIQLogo } from "../components/Logo";
+import { PrismLogo } from "../components/Logo";
 import {
   Mail,
   Lock,
@@ -11,6 +12,8 @@ import {
   Users,
   BarChart3,
   Zap,
+  X,
+  ChevronRight,
 } from "lucide-react";
 
 /* ── Brand panel feature highlights ──────────────────── */
@@ -31,6 +34,103 @@ const FEATURES = [
     desc: "Launch multi-channel campaigns in minutes.",
   },
 ];
+
+/* ── Prism AI Greeting Widget ─────────────────────────── */
+const PRISM_TIPS = [
+  "Hi! I'm Prism ✨ — SegmentIQ's AI assistant.",
+  "Upload a CSV to auto-analyze your customer segments!",
+  "I can generate campaign ideas, revenue insights & more.",
+  "Ask me anything about your CRM data, anytime.",
+  "Get started — sign in or create a free account! 🚀",
+];
+
+function PrismGreet() {
+  const [visible, setVisible] = useState(true);
+  const [tipIdx, setTipIdx]   = useState(0);
+  const [fade, setFade]       = useState(true);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setTipIdx(i => (i + 1) % PRISM_TIPS.length);
+        setFade(true);
+      }, 350);
+    }, 4000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div style={{
+      position: "fixed", bottom: "24px", right: "24px",
+      zIndex: 200, maxWidth: "260px",
+      animation: "prismGreetIn 0.5s cubic-bezier(0.16,1,0.3,1) both",
+    }}>
+      <style>{`
+        @keyframes prismGreetIn { from { opacity:0; transform:translateY(30px) scale(0.88); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes tipFade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
+
+      {/* Chat bubble */}
+      <div style={{
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(199,210,254,0.60)",
+        borderRadius: "16px 16px 4px 16px",
+        padding: "14px 16px",
+        boxShadow: "0 16px 48px rgba(99,102,241,0.18), 0 4px 12px rgba(15,23,42,0.08)",
+        marginBottom: "8px",
+        position: "relative",
+      }}>
+        <button onClick={() => setVisible(false)} style={{
+          position: "absolute", top: "8px", right: "8px",
+          background: "none", border: "none", cursor: "pointer",
+          color: "#94a3b8", padding: "2px", borderRadius: "4px",
+        }}>
+          <X size={11} />
+        </button>
+        <p style={{
+          fontSize: "12.5px", lineHeight: 1.5, color: "#1e293b",
+          margin: 0, paddingRight: "16px",
+          opacity: fade ? 1 : 0,
+          transition: "opacity 0.30s ease",
+          minHeight: "36px",
+        }}>
+          {PRISM_TIPS[tipIdx]}
+        </p>
+        <div style={{
+          display: "flex", gap: "3px", marginTop: "8px", justifyContent: "flex-end",
+        }}>
+          {PRISM_TIPS.map((_, i) => (
+            <div key={i} style={{
+              width: i === tipIdx ? 16 : 5, height: 5, borderRadius: 99,
+              background: i === tipIdx ? "#6366f1" : "rgba(199,210,254,0.60)",
+              transition: "all 0.3s ease",
+            }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Avatar row */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "#1e293b", margin: 0 }}>Prism AI</p>
+          <p style={{ fontSize: "9.5px", color: "#6366f1", margin: 0, fontWeight: 600 }}>● Online</p>
+        </div>
+        <div style={{
+          width: 36, height: 36, borderRadius: "11px",
+          background: "linear-gradient(135deg,#6366f1,#818cf8)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(99,102,241,0.35)",
+        }}>
+          <PrismLogo size={20} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Login() {
   const navigate = useNavigate();
@@ -486,6 +586,8 @@ function Login() {
           .mobile-logo { display: none !important; }
         }
       `}</style>
+
+      <PrismGreet />
     </>
   );
 }

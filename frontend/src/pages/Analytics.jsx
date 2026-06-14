@@ -19,6 +19,7 @@ import {
 import {
   getStats, getCityDistribution, getRevenueByCity,
   getGenderDistribution, getMonthlyRevenue, getChannelStats,
+  getAgeDistribution,
 } from "../services/api";
 
 /* ─── Palettes ───────────────────────────────────────────────
@@ -184,6 +185,7 @@ export default function Analytics() {
   const [genderData,   setGenderData]   = useState([]);
   const [monthlyRev,   setMonthlyRev]   = useState([]);
   const [channelStats, setChannelStats] = useState(null);
+  const [ageData,      setAgeData]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [activeTab,    setActiveTab]    = useState("overview");
   const [lastFetched,  setLastFetched]  = useState(null);
@@ -191,9 +193,10 @@ export default function Analytics() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sR, cR, rcR, gR, mR, chR] = await Promise.all([
+      const [sR, cR, rcR, gR, mR, chR, aR] = await Promise.all([
         getStats(), getCityDistribution(), getRevenueByCity(),
         getGenderDistribution(), getMonthlyRevenue(), getChannelStats(),
+        getAgeDistribution(),
       ]);
       setStats(sR.data);
       setCityData((cR.data || []).map(d => ({ name: d.city, value: d.customers ?? d.count ?? 0 })));
@@ -201,6 +204,7 @@ export default function Analytics() {
       setGenderData((gR.data || []).map(d => ({ name: d.gender, value: d.count ?? 0 })));
       setMonthlyRev(mR.data || []);
       setChannelStats(chR.data);
+      setAgeData(aR.data || []);
       setLastFetched(new Date());
     } catch (err) {
       console.error("Analytics load error:", err);
@@ -251,12 +255,12 @@ export default function Analytics() {
 
   /* ── Age buckets (single-hue teal gradient) ── */
   const AGE_SHADES = ["#0c4a6e", "#075985", "#0369a1", "#0284c7", "#0ea5e9"];
-  const ageBuckets = [
-    { age: "18–24", customers: Math.round((stats?.total_customers || 0) * 0.18) },
-    { age: "25–34", customers: Math.round((stats?.total_customers || 0) * 0.32) },
-    { age: "35–44", customers: Math.round((stats?.total_customers || 0) * 0.26) },
-    { age: "45–54", customers: Math.round((stats?.total_customers || 0) * 0.16) },
-    { age: "55+",   customers: Math.round((stats?.total_customers || 0) * 0.08) },
+  const ageBuckets = ageData.length > 0 ? ageData : [
+    { age: "18–24", customers: 0 },
+    { age: "25–34", customers: 0 },
+    { age: "35–44", customers: 0 },
+    { age: "45–54", customers: 0 },
+    { age: "55+",   customers: 0 },
   ];
 
   /* ── Loading skeleton ── */
