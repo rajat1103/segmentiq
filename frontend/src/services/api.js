@@ -44,6 +44,9 @@ API.interceptors.response.use(
 export const login = (payload) =>
   API.post("/auth/login", payload);
 
+export const googleLogin = (payload) =>
+  API.post("/auth/google", payload);
+
 export const signup = (payload) =>
   API.post("/auth/signup", payload);
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { login as apiLogin, signup as apiSignup } from "../services/api";
+import { login as apiLogin, signup as apiSignup, googleLogin as apiGoogleLogin } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -72,6 +72,23 @@ export function AuthProvider({ children }) {
     return res;
   };
 
+  const loginWithGoogle = async (credential) => {
+    const res = await apiGoogleLogin({ credential });
+    const access_token = res.data.access_token;
+    
+    const { name, email } = res.data.user || {};
+    if (email) {
+      localStorage.setItem(
+        `user_profile_${email}`,
+        JSON.stringify({ name: name || getNameFromEmail(email), email })
+      );
+    }
+    
+    localStorage.setItem("token", access_token);
+    setToken(access_token);
+    return res;
+  };
+
   const signup = async (name, email, password) => {
     const res = await apiSignup({ name, email, password });
     // Cache the name for future logins with this email
@@ -97,6 +114,7 @@ export function AuthProvider({ children }) {
         user,
         loading,
         login,
+        loginWithGoogle,
         signup,
         logout,
         isAuthenticated,
