@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
-import { Users, ShoppingCart, IndianRupee, TrendingUp, RefreshCw } from "lucide-react";
+import { Users, ShoppingCart, IndianRupee, TrendingUp, RefreshCw, Upload } from "lucide-react";
 
 import { getStats, getCityDistribution, getRevenueByCity } from "../services/api";
 
 import SciFiGlobe from "../components/SciFiGlobe";
-import IndiaTopoMap from "../components/IndiaTopoMap";
+import CSVUploadModal from "../components/CSVUploadModal";
 import EmptyState from "../components/EmptyState";
 
 /* ── Circle Gauge Component ────────────────────────────── */
@@ -234,7 +234,7 @@ export default function Dashboard() {
   const [commStats,  setCommStats]  = useState({ sent: 0, failed: 0, pending: 0, total: 0 });
   const [loading,    setLoading]    = useState(true);
   const [lastFetched, setLastFetched] = useState(null);
-  const [activeTab,  setActiveTab]  = useState("india");
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -291,10 +291,16 @@ export default function Dashboard() {
             {lastFetched ? `Last synchronized: ${lastFetched.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Connecting to FastAPI..."}
           </p>
         </div>
-        <button onClick={loadDashboard} disabled={loading} className="glass-btn-secondary" style={{ fontSize: "12px", gap: "6px" }}>
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button onClick={() => setShowUploadModal(true)} className="glass-btn-primary" style={{ fontSize: "12px", gap: "6px" }}>
+            <Upload size={12} />
+            Import CSV
+          </button>
+          <button onClick={loadDashboard} disabled={loading} className="glass-btn-secondary" style={{ fontSize: "12px", gap: "6px" }}>
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Dashboard Quote Insight */}
@@ -340,60 +346,17 @@ export default function Dashboard() {
       </div>
 
       {/* Row 1: Sci-Fi Cybernetic Globe & Expansion Nodes */}
+      {/* Row 1: Sci-Fi Cybernetic Globe */}
       <div style={{ marginBottom: "14px" }}>
         <GlassPanel
           title="Operational Network & Pipeline Expansion"
-          subtitle="Toggle between local India telemetry map and global 3D cybernetic network"
+          subtitle="Global 3D cybernetic telemetry network"
         >
           {loading ? (
             <Skeleton h={420} w="100%" />
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-                <button
-                  onClick={() => setActiveTab("india")}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    border: "1px solid rgba(99, 102, 241, 0.2)",
-                    background: activeTab === "india" ? "linear-gradient(135deg, #6366f1, #4f46e5)" : "rgba(255, 255, 255, 0.4)",
-                    color: activeTab === "india" ? "#fff" : "#4b5563",
-                  }}
-                >
-                  🗺️ India Telemetry
-                </button>
-                <button
-                  onClick={() => setActiveTab("global")}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    border: "1px solid rgba(99, 102, 241, 0.2)",
-                    background: activeTab === "global"
-                      ? "linear-gradient(135deg, #6366f1, #4f46e5)"
-                      : isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(255, 255, 255, 0.4)",
-                    color: activeTab === "global" ? "#fff" : isDark ? "#cbd5e1" : "#4b5563",
-                  }}
-                >
-                  🪐 Global Network
-                </button>
-              </div>
-              <div style={{ height: "440px", width: "100%", position: "relative" }}>
-                {activeTab === "india" ? (
-                  <IndiaTopoMap cities={cities} revenue={revenue} />
-                ) : (
-                  <SciFiGlobe />
-                )}
-              </div>
+            <div style={{ height: "440px", width: "100%", position: "relative" }}>
+              <SciFiGlobe />
             </div>
           )}
         </GlassPanel>
@@ -427,6 +390,12 @@ export default function Dashboard() {
           </GlassPanel>
         </div>
       )}
+
+      <CSVUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={loadDashboard}
+      />
     </>
   );
 }

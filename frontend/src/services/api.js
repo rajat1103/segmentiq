@@ -71,6 +71,8 @@ export const getCustomer = (id) => API.get(`/customers/${id}`);
 
 export const createCustomer = (payload) => API.post("/customers/", payload);
 
+export const importCustomersBulk = (payload) => API.post("/customers/bulk", payload);
+
 export const updateCustomer = (id, payload) => API.put(`/customers/${id}`, payload);
 
 export const deleteCustomer = (id) => API.delete(`/customers/${id}`);

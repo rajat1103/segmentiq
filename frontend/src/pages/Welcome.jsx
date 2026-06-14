@@ -15,7 +15,7 @@ import {
   Play,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-import { createCustomer, resetDatabase, seedDatabase } from "../services/api";
+import { createCustomer, resetDatabase, seedDatabase, importCustomersBulk } from "../services/api";
 
 /* ─── Moving Starfield Background Canvas Component ─────── */
 function StarfieldBackground() {
@@ -240,26 +240,37 @@ export default function Welcome() {
   const executeCSVImport = async () => {
     if (parsedRows.length === 0) return;
     setImporting(true);
-    setImportTotal(parsedRows.length);
+    setImportTotal(1);
     setImportProgress(0);
 
-    let successCount = 0;
-    for (let i = 0; i < parsedRows.length; i++) {
-      try {
-        const model = mapCSVRowToCustomer(parsedRows[i]);
-        await createCustomer(model);
-        successCount++;
-      } catch (err) {
-        console.error("Row insertion error:", err);
-      }
-      setImportProgress(i + 1);
-    }
+    try {
+      const models = parsedRows.map((row) => {
+        const mapped = mapCSVRowToCustomer(row);
+        return {
+          name: mapped.name,
+          email: mapped.email,
+          phone: mapped.phone,
+          city: mapped.city,
+          gender: mapped.gender,
+          age: mapped.age,
+          total_spent: mapped.total_spend,
+        };
+      });
 
-    setImporting(false);
-    toast.success(`Successfully uploaded ${successCount} customers to active database!`);
-    setTimeout(() => {
-      setStep(3);
-    }, 1200);
+      const res = await importCustomersBulk(models);
+      setImportProgress(1);
+      const { imported, updated } = res.data;
+      toast.success(`Successfully ingested dataset: ${imported} imported, ${updated} updated.`);
+      
+      setTimeout(() => {
+        setStep(3);
+      }, 1200);
+    } catch (err) {
+      console.error("CSV bulk import error:", err);
+      toast.error(err?.response?.data?.detail || "Ingestion failure. Check CSV structure.");
+    } finally {
+      setImporting(false);
+    }
   };
 
   // Seed sample dataset on backend

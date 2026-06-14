@@ -10,6 +10,7 @@ class CustomerCreate(BaseModel):
     city: Optional[str] = None
     gender: Optional[str] = None
     age: Optional[int] = None
+    total_spent: Optional[float] = 0.0
 
 
 class CustomerUpdate(BaseModel):

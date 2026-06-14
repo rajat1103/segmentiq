@@ -8,10 +8,12 @@ import os
 import json
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from groq import Groq
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -43,6 +45,50 @@ def get_groq_client() -> Groq:
     return Groq(api_key=api_key)
 
 
+def get_database_summary(db: Session) -> str:
+    """Retrieves live database metrics and aggregates to inject into Prism AI prompt."""
+    try:
+        from app.models.customer import Customer
+        from app.models.campaign import Campaign
+        from sqlalchemy import func
+        
+        total_customers = db.query(Customer).count()
+        if total_customers == 0:
+            return "DATABASE STATE: The customer database is currently empty. No records have been uploaded or seeded yet."
+        
+        total_revenue = db.query(func.sum(Customer.total_spent)).scalar() or 0.0
+        avg_spent = total_revenue / total_customers if total_customers > 0 else 0.0
+        
+        # Breakdown by city
+        city_counts = db.query(Customer.city, func.count(Customer.id)).group_by(Customer.city).all()
+        city_str = ", ".join([f"{city or 'Unknown'}: {count}" for city, count in city_counts])
+        
+        # Breakdown by gender
+        gender_counts = db.query(Customer.gender, func.count(Customer.id)).group_by(Customer.gender).all()
+        gender_str = ", ".join([f"{gender or 'Unknown'}: {count}" for gender, count in gender_counts])
+        
+        # Top 5 highest spenders
+        top_spenders = db.query(Customer).order_by(Customer.total_spent.desc()).limit(5).all()
+        top_str = "\n".join([f"  - {c.name} ({c.email}) in {c.city or 'Unknown'}: Spent INR {c.total_spent:.2f}" for c in top_spenders])
+        
+        # Active campaigns
+        campaign_counts = db.query(Campaign.status, func.count(Campaign.id)).group_by(Campaign.status).all()
+        camp_str = ", ".join([f"{status}: {count}" for status, count in campaign_counts])
+        
+        return f"""DATABASE STATE:
+- Total Customer Headcount: {total_customers}
+- Total Gross Revenue: INR {total_revenue:.2f}
+- Average Spent per Customer: INR {avg_spent:.2f}
+- Customer counts by City: {city_str}
+- Customer counts by Gender: {gender_str}
+- Top 5 Spenders in Database:
+{top_str}
+- Campaigns breakdown by Status: {camp_str or 'None'}
+"""
+    except Exception as e:
+        return f"DATABASE STATE: (Error pulling live summary: {e})"
+
+
 # ── Request / Response schemas ────────────────────────────────────────────
 class ChatMessage(BaseModel):
     role: str   # "user" | "assistant"
@@ -64,15 +110,17 @@ class MessageRequest(BaseModel):
 
 # ── POST /ai/chat  (main chat interface) ─────────────────────────────────
 @router.post("/chat")
-async def ai_chat(req: ChatRequest):
+async def ai_chat(req: ChatRequest, db: Session = Depends(get_db)):
     """
     Full chat endpoint. Takes message history, returns AI response.
     Used by the SegmentAI chat UI.
     """
     client = get_groq_client()
+    db_summary = get_database_summary(db)
 
-    # Build message list with system prompt
-    groq_messages = [{"role": "system", "content": CRM_SYSTEM_PROMPT}]
+    # Build message list with system prompt including dynamic database info
+    system_prompt = f"{CRM_SYSTEM_PROMPT}\n\n{db_summary}"
+    groq_messages = [{"role": "system", "content": system_prompt}]
     for msg in req.messages[-12:]:  # Keep last 12 messages to avoid token limit
         groq_messages.append({"role": msg.role, "content": msg.content})
 

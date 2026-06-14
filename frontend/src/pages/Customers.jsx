@@ -6,11 +6,13 @@ import {
   Phone, Mail, MapPin, User, RefreshCw,
   ShoppingCart, Star, Flame, Crown, Snowflake,
   MessageSquare, Package, Calendar, ExternalLink,
+  Upload,
 } from "lucide-react";
 import {
   getCustomers, createCustomer, deleteCustomer, getCustomerStats,
 } from "../services/api";
 import EmptyState from "../components/EmptyState";
+import CSVUploadModal from "../components/CSVUploadModal";
 
 const PAGE_SIZE = 15;
 
@@ -520,6 +522,7 @@ export default function Customers() {
   const [panelOpen,       setPanelOpen]       = useState(false);
   const [toDelete,        setToDelete]        = useState(null);
   const [journeyCustomer, setJourneyCustomer] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -580,6 +583,10 @@ export default function Customers() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
+          <button onClick={() => setShowUploadModal(true)} className="glass-btn-secondary" style={{ fontSize: "12.5px" }}>
+            <Upload size={13} />
+            Import CSV
+          </button>
           <button onClick={loadAll} className="glass-btn-secondary" style={{ fontSize: "12.5px" }}>
             <RefreshCw size={13} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
             Refresh
@@ -802,6 +809,12 @@ export default function Customers() {
           )}
         </div>
       )}
+
+      <CSVUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={loadAll}
+      />
 
       <style>{`
         @keyframes shimmer { 0% { background-position: -300% 0; } 100% { background-position: 300% 0; } }
