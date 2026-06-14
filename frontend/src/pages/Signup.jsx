@@ -62,8 +62,13 @@ function Signup() {
   useEffect(() => {
     const initGoogle = () => {
       if (typeof window.google !== "undefined") {
+        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const resolvedClientId = (googleClientId && googleClientId !== "undefined")
+          ? googleClientId
+          : "662384752311-3b47hrvdcaf7vc38utiogrps4dt3v43a.apps.googleusercontent.com";
+
         window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "662384752311-3b47hrvdcaf7vc38utiogrps4dt3v43a.apps.googleusercontent.com",
+          client_id: resolvedClientId,
           callback: handleGoogleCredentialResponse,
         });
         window.google.accounts.id.renderButton(
