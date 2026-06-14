@@ -9,9 +9,8 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY
-        generateValue: true          # Render auto-generates a cryptographically secure value
+        generateValue: true
       - key: GROQ_API_KEY
         sync: false
       - key: ALLOWED_ORIGINS
-        # Netlify production URL — hardcoded here as a safety net
         value: "https://segmentiq.netlify.app"
