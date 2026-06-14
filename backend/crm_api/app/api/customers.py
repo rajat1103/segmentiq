@@ -132,27 +132,37 @@ def bulk_create_customers(
 ):
     imported_count = 0
     updated_count = 0
+    failed_count = 0
 
-    # Cache existing emails and phones
-    existing_emails = {c.email: c for c in db.query(Customer).all()}
-    existing_phones = {c.phone: c for c in db.query(Customer).filter(Customer.phone != None).all()}
+    # Cache existing emails and phones (ignore empty strings and nulls to prevent false conflicts)
+    existing_emails = {c.email.strip().lower(): c for c in db.query(Customer).all() if c.email}
+    existing_phones = {
+        c.phone.strip(): c 
+        for c in db.query(Customer).filter(Customer.phone != None, Customer.phone != "").all()
+    }
 
     for c_data in customers:
-        if not c_data.email:
+        if not c_data.email or not c_data.email.strip():
+            failed_count += 1
             continue
-        
+
+        email_cleaned = c_data.email.strip().lower()
+        phone_cleaned = c_data.phone.strip() if c_data.phone else None
+        if phone_cleaned == "":
+            phone_cleaned = None
+
         # Check duplicate in memory first
-        customer = existing_emails.get(c_data.email)
-        if not customer and c_data.phone:
-            customer = existing_phones.get(c_data.phone)
+        customer = existing_emails.get(email_cleaned)
+        if not customer and phone_cleaned:
+            customer = existing_phones.get(phone_cleaned)
 
         if customer:
             # Update (upsert)
-            customer.name = c_data.name
+            customer.name = c_data.name.strip()
             if c_data.city:
-                customer.city = c_data.city
+                customer.city = c_data.city.strip()
             if c_data.gender:
-                customer.gender = c_data.gender
+                customer.gender = c_data.gender.strip()
             if c_data.age:
                 customer.age = c_data.age
             if c_data.total_spent is not None:
@@ -161,11 +171,11 @@ def bulk_create_customers(
         else:
             # Insert
             new_customer = Customer(
-                name=c_data.name,
-                email=c_data.email,
-                phone=c_data.phone,
-                city=c_data.city,
-                gender=c_data.gender,
+                name=c_data.name.strip(),
+                email=email_cleaned,
+                phone=phone_cleaned,
+                city=c_data.city.strip() if c_data.city else None,
+                gender=c_data.gender.strip() if c_data.gender else None,
                 age=c_data.age,
                 total_spent=c_data.total_spent or 0.0
             )
@@ -173,9 +183,9 @@ def bulk_create_customers(
             imported_count += 1
             
             # Store in cache so subsequent entries in the same import list don't duplicate
-            existing_emails[c_data.email] = new_customer
-            if c_data.phone:
-                existing_phones[c_data.phone] = new_customer
+            existing_emails[email_cleaned] = new_customer
+            if phone_cleaned:
+                existing_phones[phone_cleaned] = new_customer
 
     try:
         db.commit()
@@ -187,7 +197,8 @@ def bulk_create_customers(
         "status": "success",
         "imported": imported_count,
         "updated": updated_count,
-        "total": imported_count + updated_count
+        "failed": failed_count,
+        "total": imported_count + updated_count + failed_count
     }
 
 

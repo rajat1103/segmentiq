@@ -212,7 +212,7 @@ export default function Welcome() {
 
     const name = findValue(["name"]) || "Unknown Customer";
     const email = findValue(["email", "mail"]) || `${name.toLowerCase().replace(/\s+/g, ".")}@segmentiq-user.in`;
-    const phone = findValue(["phone", "mobile", "tel"]) || "+91 99000-00000";
+    const phone = findValue(["phone", "mobile", "tel"]) || null;
     const cityVal = findValue(["city", "town", "loc"]) || "Bangalore";
     const cities = ["Bangalore", "Delhi", "Chennai", "Pune", "Hyderabad", "Mumbai"];
     let city = cities.find((c) => c.toLowerCase() === cityVal.toLowerCase()) || "Bangalore";

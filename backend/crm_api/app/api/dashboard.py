@@ -18,6 +18,7 @@ def get_dashboard_stats():
     try:
         total_customers = db.query(Customer).count()
         total_orders = db.query(Order).count()
+        active_buyers = db.query(Customer).filter(Customer.total_spent > 0).count()
 
         # Guard against None when no orders exist
         total_revenue = db.query(func.sum(Order.amount)).scalar() or 0.0
@@ -39,6 +40,7 @@ def get_dashboard_stats():
             "total_orders": total_orders,
             "total_revenue": round(float(total_revenue), 2),
             "average_order_value": round(float(avg_order_value), 2),
+            "active_buyers": active_buyers,
             # Communication breakdown (Phase 4 data)
             "comm_total":     total_comm,
             "comm_pending":   comm_stats.get("PENDING",   0),

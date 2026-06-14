@@ -379,8 +379,18 @@ export default function Dashboard() {
               
               {/* Frosted Gauges */}
               <div style={{ display: "flex", gap: "16px", justifyContent: "center" }}>
-                <CircleGauge value={74} label="Conversion" sublabel="Ratio" color="#3b82f6" />
-                <CircleGauge value={68} label="Engagement" sublabel="Score" color="#10b981" />
+                <CircleGauge 
+                  value={stats?.total_customers > 0 ? Math.min(Math.round(((stats.active_buyers || stats.total_orders || 0) / stats.total_customers) * 100), 100) : 0} 
+                  label="Conversion" 
+                  sublabel="Ratio" 
+                  color="#3b82f6" 
+                />
+                <CircleGauge 
+                  value={stats?.comm_total > 0 ? Math.min(Math.round((((stats.comm_delivered || 0) + (stats.comm_clicked || 0)) / stats.comm_total) * 100), 100) : 65} 
+                  label="Engagement" 
+                  sublabel="Score" 
+                  color="#10b981" 
+                />
               </div>
             </div>
           </GlassPanel>
