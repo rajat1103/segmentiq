@@ -21,10 +21,42 @@ from app.api.ai import router as ai_router
 from app.api.channel_service import router as channel_router
 
 
+def run_schema_migrations(engine):
+    """Automatically synchronizes database schema columns with SQLAlchemy models."""
+    from sqlalchemy import inspect, text
+    try:
+        inspector = inspect(engine)
+        with engine.begin() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if inspector.has_table(table_name):
+                    existing_cols = {c["name"] for c in inspector.get_columns(table_name)}
+                    for col_name, column in table.columns.items():
+                        if col_name not in existing_cols:
+                            type_str = str(column.type).upper()
+                            # Determine basic type
+                            if "INT" in type_str:
+                                sql_type = "INTEGER"
+                            elif "FLOAT" in type_str or "NUMERIC" in type_str or "REAL" in type_str:
+                                sql_type = "FLOAT"
+                            elif "TIME" in type_str or "DATE" in type_str:
+                                sql_type = "TIMESTAMP"
+                            elif "BOOL" in type_str:
+                                sql_type = "BOOLEAN"
+                            else:
+                                sql_type = "VARCHAR"
+                            
+                            # Execute alter table
+                            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {sql_type}"))
+                            print(f"Successfully migrated database column: {table_name}.{col_name} ({sql_type})")
+    except Exception as e:
+        print(f"Error during automatic schema migration: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create database tables on startup."""
+    """Create database tables and run schema migrations on startup."""
     Base.metadata.create_all(bind=engine)
+    run_schema_migrations(engine)
     yield
 
 

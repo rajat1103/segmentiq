@@ -35,6 +35,12 @@ const ACCEPTED_TYPES = {
   "image/jpeg":       { label: "IMG",  color: "#8b5cf6", bg: "#f5f3ff" },
 };
 
+const DEFAULT_SESSION = {
+  id: "session-default",
+  title: "Prism Workspace",
+  messages: [],
+};
+
 
 /* ═══════════════════════════════════════════════════════
    SUB-COMPONENTS
