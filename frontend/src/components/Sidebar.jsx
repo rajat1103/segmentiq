@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  BarChart3,
 } from "lucide-react";
 import { SegmentIQLogo, PrismLogo } from "./Logo";
 import { Link, useLocation } from "react-router-dom";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
     group: "Core",
     items: [
       { name: "Dashboard",          path: "/dashboard",          icon: LayoutDashboard },
+      { name: "Analytics",          path: "/analytics",          icon: BarChart3,  badge: "New" },
       { name: "Customers",          path: "/customers",          icon: Users           },
       { name: "Campaigns",          path: "/campaigns",          icon: Megaphone       },
       { name: "Communication Logs", path: "/communication-logs", icon: MessageSquare   },

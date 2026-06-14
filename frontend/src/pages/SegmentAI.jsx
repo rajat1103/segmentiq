@@ -12,31 +12,34 @@ import {
 } from "lucide-react";
 
 
-function buildAiReply(query, attachments, docs) {
-  const lines = [];
-  if (query) {
-    lines.push(`Received your request: "${query}".`);
-  } else {
-    lines.push("Received an attachment request. Share a question to activate context-aware analysis.");
-  }
+/* ═══════════════════════════════════════════════════════
+   CONSTANTS & CONFIG
+   ═══════════════════════════════════════════════════════ */
 
-  if (docs.length > 0) {
-    lines.push(`I am referencing ${docs.length} indexed document${docs.length > 1 ? "s" : ""}: ${docs.map((doc) => doc.name).join(", ")}.`);
-  } else {
-    lines.push("No indexed knowledge documents are available yet. Upload a file to provide workspace context.");
-  }
+const PROMPT_TEMPLATES = [
+  { id: 1, icon: Users,      label: "Segment Summary",  prompt: "Summarize the customer segment most likely to convert this month." },
+  { id: 2, icon: BarChart3,  label: "Retention Review", prompt: "Review customer retention trends and identify where engagement is dropping." },
+  { id: 3, icon: FileSearch, label: "Data Diagnostics", prompt: "Which CRM data sources should I connect to improve audience targeting?" },
+  { id: 4, icon: Zap,        label: "Campaign Check",   prompt: "What should I know before launching a new campaign this quarter?" },
+  { id: 5, icon: Brain,      label: "Insight Request",  prompt: "What are the highest-priority operational signals in my customer data?" },
+  { id: 6, icon: Tag,        label: "Next Step",        prompt: "Suggest the next analytics task for customer segmentation." },
+];
 
-  if (attachments.length > 0) {
-    lines.push(`Attached file${attachments.length > 1 ? "s" : ""}: ${attachments.map((file) => file.name).join(", ")}.`);
-  }
+const ACCEPTED_TYPES = {
+  "application/pdf":  { label: "PDF",  color: "#ef4444", bg: "#fee2e2" },
+  "text/csv":         { label: "CSV",  color: "#10b981", bg: "#f0fdf4" },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                      { label: "XLSX", color: "#0ea5e9", bg: "#f0f9ff" },
+  "text/plain":       { label: "TXT",  color: "#6366f1", bg: "#eef2ff" },
+  "image/png":        { label: "IMG",  color: "#8b5cf6", bg: "#f5f3ff" },
+  "image/jpeg":       { label: "IMG",  color: "#8b5cf6", bg: "#f5f3ff" },
+};
 
-  lines.push("This workspace is a live AI shell. Connect a model or backend integration to unlock guided CRM recommendations.");
-  return lines.join("\n\n");
-}
 
 /* ═══════════════════════════════════════════════════════
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════ */
+
 
 /* Markdown-like renderer for AI messages */
 function MarkdownMessage({ content }) {

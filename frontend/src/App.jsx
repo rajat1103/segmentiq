@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 
 import Dashboard         from "./pages/Dashboard";
+import Analytics         from "./pages/Analytics";
 import Customers         from "./pages/Customers";
 import Campaigns         from "./pages/Campaigns";
 import CommunicationLogs from "./pages/CommunicationLogs";
@@ -69,6 +70,7 @@ function App() {
             <Route path="/"                   element={<Navigate to="/command-center" replace />} />
             <Route path="/command-center"     element={<CommandCenter />} />
             <Route path="/dashboard"          element={<Dashboard />} />
+            <Route path="/analytics"          element={<Analytics />} />
             <Route path="/customers"          element={<Customers />} />
             <Route path="/campaigns"          element={<Campaigns />} />
             <Route path="/communication-logs" element={<CommunicationLogs />} />
