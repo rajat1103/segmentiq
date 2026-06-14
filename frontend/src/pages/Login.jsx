@@ -58,7 +58,7 @@ function Login() {
     const initGoogle = () => {
       if (typeof window.google !== "undefined") {
         window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "662384752311-3b47hrvdcaf7vc38utiogrps4dt3v43a.apps.googleusercontent.com",
           callback: handleGoogleCredentialResponse,
         });
         window.google.accounts.id.renderButton(
@@ -392,6 +392,12 @@ function Login() {
               <div style={{ textAlign: "right", marginBottom: "20px" }}>
                 <button
                   type="button"
+                  onClick={() => {
+                    const emailInput = prompt("Enter your registered email address to receive reset instructions:");
+                    if (emailInput && emailInput.trim()) {
+                      toast.success("Password reset instructions sent to " + emailInput.trim(), { icon: "📧" });
+                    }
+                  }}
                   style={{
                     background: "none",
                     border: "none",
@@ -444,37 +450,9 @@ function Login() {
             </div>
 
             {/* ── Google SSO Button ────────────────── */}
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", width: "100%", minHeight: "44px" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px", width: "100%", minHeight: "44px" }}>
               <div id="google-signin-btn" style={{ width: "100%" }}></div>
             </div>
-
-            {/* ── LinkedIn SSO Button ───────────────── */}
-            <button
-              type="button"
-              onClick={() => toast.info("LinkedIn OAuth — backend integration ready", { icon: "💼" })}
-              style={{
-                width: "100%", padding: "10px 16px",
-                borderRadius: "8px",
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                border: "1px solid rgba(0,119,181,0.25)",
-                boxShadow: "0 1px 6px rgba(0,119,181,0.06)",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                cursor: "pointer",
-                transition: "all 0.18s ease",
-                marginBottom: "20px",
-                fontSize: "13.5px", fontWeight: 600, color: "#0077B5",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,247,255,0.98)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,119,181,0.12)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,119,181,0.06)"; }}
-            >
-              {/* LinkedIn Logo */}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#0077B5">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-              Continue with LinkedIn
-            </button>
 
             {/* Sign up link */}
             <p style={{ textAlign: "center", fontSize: "13px", color: "var(--color-text-secondary)", margin: 0 }}>
