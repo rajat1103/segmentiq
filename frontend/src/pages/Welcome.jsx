@@ -198,19 +198,6 @@ export default function Welcome() {
           transform: translateY(-2px);
           box-shadow: 0 6px 20px rgba(217, 70, 239, 0.50);
         }
-        .glass-onboarding-panel {
-          background: rgba(10, 10, 25, 0.65);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(40px);
-          -webkit-backdrop-filter: blur(40px);
-          border-radius: 24px;
-          padding: 36px;
-          width: 100%;
-          max-width: 640px;
-          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
-          animation: glowPulse 5s infinite ease-in-out;
-          position: relative;
-        }
         .full-slide {
           height: 100vh;
           width: 100vw;
@@ -261,7 +248,7 @@ export default function Welcome() {
       }}>
         {/* SLIDE 1: HOLOGRAPHIC TELEMETRY SYNC */}
         <div className="full-slide">
-          <div className="glass-onboarding-panel" style={{ position: "relative" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "680px", padding: "24px" }}>
             <div className="laser-scanner" />
             <div style={{ display: "flex", flexDirection: "column", gap: "20px", textAlign: "center" }}>
               <div>
@@ -337,7 +324,7 @@ export default function Welcome() {
 
         {/* SLIDE 2: OPERATIONAL NETWORK & ROTATING SCI-FI GLOBE */}
         <div className="full-slide" style={{ background: "transparent" }}>
-          <div className="glass-onboarding-panel" style={{ maxWidth: "860px", width: "90%", padding: "30px", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
+          <div style={{ maxWidth: "1200px", width: "95%", padding: "20px", position: "relative" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{ textAlign: "center" }}>
                 <span style={{
@@ -360,13 +347,9 @@ export default function Welcome() {
 
               {/* SciFi Globe integration */}
               <div style={{
-                height: "360px",
+                height: "520px",
                 width: "100%",
-                background: "rgba(255, 255, 255, 0.01)",
-                border: "1px solid rgba(255, 255, 255, 0.04)",
-                borderRadius: "16px",
                 overflow: "hidden",
-                boxShadow: "inset 0 0 40px rgba(0, 0, 0, 0.8)",
                 position: "relative"
               }}>
                 <SciFiGlobe />

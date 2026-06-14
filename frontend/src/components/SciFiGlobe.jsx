@@ -39,6 +39,39 @@ export default function SciFiGlobe() {
   const autoCycleTimer = useRef(null);
   const rotationParamsRef = useRef({ targetX: 0, targetY: 0, currentX: 0.15, currentY: 0 });
 
+  const GLOBE_RADIUS = 3.2;
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    setUserInteracted(true);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+
+    rotationParamsRef.current.targetY += deltaX * 0.0055;
+    rotationParamsRef.current.targetX += deltaY * 0.0055;
+
+    const maxLat = 85 * Math.PI / 180;
+    rotationParamsRef.current.targetX = Math.max(-maxLat, Math.min(maxLat, rotationParamsRef.current.targetX));
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
+
+  const handlePointerLeave = () => {
+    setIsDragging(false);
+  };
+
   const activeCity = CITIES[activeIdx];
   const isDark = document.documentElement.classList.contains("dark");
   const webglAvailable = isWebGLAvailable();
@@ -62,11 +95,9 @@ export default function SciFiGlobe() {
   // Update rotation targets on active city change
   useEffect(() => {
     const city = CITIES[activeIdx];
-    const latRad = (city.lat * Math.PI) / 180;
-    const lonRad = (city.lon * Math.PI) / 180;
-
-    rotationParamsRef.current.targetY = -lonRad;
-    rotationParamsRef.current.targetX = -latRad;
+    const theta = (city.lon + 180) * (Math.PI / 180);
+    rotationParamsRef.current.targetY = -theta;
+    rotationParamsRef.current.targetX = (city.lat * Math.PI) / 180;
   }, [activeIdx]);
 
   // Three.js Render Lifecycle
@@ -75,11 +106,9 @@ export default function SciFiGlobe() {
     const canvas = canvasRef.current;
     if (!container || !canvas || !isWebGLAvailable()) return;
 
-    let width = container.clientWidth * 0.6;
-    let height = container.clientHeight || 340;
-    if (window.innerWidth < 768) {
-      width = container.clientWidth;
-    }
+    const canvasContainer = canvas.parentElement;
+    let width = canvasContainer.clientWidth;
+    let height = canvasContainer.clientHeight || 520;
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -88,7 +117,7 @@ export default function SciFiGlobe() {
 
     // Camera setup
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 7.5);
+    camera.position.set(0, 0, 8.0);
     camera.lookAt(0, 0, 0);
 
     // Renderer setup
@@ -103,6 +132,7 @@ export default function SciFiGlobe() {
 
     // Inner Globe Group tilted at axial tilt of Earth (0.41 rad ≈ 23.5 degrees)
     const globeGroup = new THREE.Group();
+    globeGroup.rotation.order = 'YXZ';
     globeGroup.rotation.z = 0.41;
     constructGroup.add(globeGroup);
 
@@ -114,7 +144,7 @@ export default function SciFiGlobe() {
     textureLoader.load(earthNightTextureUrl, (texture) => {
       setLoadingTexture(false);
 
-      const coreGeometry = new THREE.SphereGeometry(2.35, 64, 64);
+      const coreGeometry = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64);
       const coreMaterial = new THREE.MeshStandardMaterial({
         map: texture,
         roughness: 0.9,
@@ -138,14 +168,14 @@ export default function SciFiGlobe() {
     const pinMatUpcoming = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
 
     CITIES.forEach((c) => {
-      const latRad = (c.lat * Math.PI) / 180;
-      const lonRad = (c.lon * Math.PI) / 180;
-      const r = 2.365; // float slightly above the texture layer
+      const phi = (90 - c.lat) * (Math.PI / 180);
+      const theta = (c.lon + 180) * (Math.PI / 180);
+      const r = GLOBE_RADIUS + 0.018; // float slightly above the texture layer
 
-      // Standard spherical projection
-      const x = r * Math.cos(latRad) * Math.sin(lonRad);
-      const y = r * Math.sin(latRad);
-      const z = r * Math.cos(latRad) * Math.cos(lonRad);
+      // Precise spherical UV mapping projection matching standard texture wrap
+      const x = -(r * Math.sin(phi) * Math.sin(theta));
+      const y = r * Math.cos(phi);
+      const z = r * Math.sin(phi) * Math.cos(theta);
 
       const pin = new THREE.Mesh(
         c.active ? pinGeoActive : pinGeoUpcoming,
@@ -169,8 +199,8 @@ export default function SciFiGlobe() {
     const rings = [];
     const numRings = 4;
     for (let i = 0; i < numRings; i++) {
-      const radius = 2.7 + (i * 0.22);
-      const thickness = 0.024;
+      const radius = (GLOBE_RADIUS * 1.15) + (i * 0.28);
+      const thickness = 0.032;
 
       const ringGeo = new THREE.TorusGeometry(radius, thickness, 32, 100);
       const ring = new THREE.Mesh(ringGeo, ringMaterialSolid);
@@ -267,17 +297,17 @@ export default function SciFiGlobe() {
 
       let diffY = params.targetY - params.currentY;
       diffY = Math.atan2(Math.sin(diffY), Math.cos(diffY));
-      params.currentY += diffY * 0.065;
+      params.currentY += diffY * 0.125;
 
       let diffX = params.targetX - params.currentX;
       diffX = Math.atan2(Math.sin(diffX), Math.cos(diffX));
-      params.currentX += diffX * 0.065;
+      params.currentX += diffX * 0.125;
 
       globeGroup.rotation.y = params.currentY;
       globeGroup.rotation.x = params.currentX;
 
       // Slowly rotate constructGroup master coordinate system
-      constructGroup.rotation.y += 0.001;
+      constructGroup.rotation.y += 0.0028;
 
       // Rotate individual Torus rings
       rings.forEach((ring) => {
@@ -296,11 +326,10 @@ export default function SciFiGlobe() {
 
     animate();
 
-    // Resize Handler
     const handleResize = () => {
-      if (!containerRef.current) return;
-      const curWidth = containerRef.current.clientWidth * (window.innerWidth < 768 ? 1 : 0.6);
-      const curHeight = containerRef.current.clientHeight || 340;
+      if (!canvas.parentElement) return;
+      const curWidth = canvas.parentElement.clientWidth;
+      const curHeight = canvas.parentElement.clientHeight || 520;
 
       camera.aspect = curWidth / curHeight;
       camera.updateProjectionMatrix();
@@ -337,7 +366,7 @@ export default function SciFiGlobe() {
           flexDirection: "column",
           gap: "6px",
           overflowY: "auto",
-          maxHeight: "340px",
+          maxHeight: "480px",
           paddingRight: "8px",
         }}
         className="custom-scrollbar"
@@ -431,7 +460,12 @@ export default function SciFiGlobe() {
           justifyContent: "center",
           alignItems: "center",
           overflow: "hidden",
+          cursor: isDragging ? "grabbing" : "grab",
         }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
       >
         {webglAvailable ? (
           <>

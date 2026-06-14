@@ -4,7 +4,6 @@ import toast, { Toaster } from "react-hot-toast";
 
 import { getStats, getCityDistribution, getRevenueByCity, seedDatabase, resetDatabase } from "../services/api";
 
-import SciFiGlobe from "../components/SciFiGlobe";
 import CSVUploadModal from "../components/CSVUploadModal";
 import EmptyState from "../components/EmptyState";
 import PrismFab from "../components/PrismFab";
@@ -459,22 +458,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Row 1: Sci-Fi Cybernetic Globe & Expansion Nodes */}
-      {/* Row 1: Sci-Fi Cybernetic Globe */}
-      <div style={{ marginBottom: "14px" }}>
-        <GlassPanel
-          title="Operational Network & Pipeline Expansion"
-          subtitle="Global 3D cybernetic telemetry network"
-        >
-          {loading ? (
-            <Skeleton h={420} w="100%" />
-          ) : (
-            <div style={{ height: "440px", width: "100%", position: "relative" }}>
-              <SciFiGlobe />
-            </div>
-          )}
-        </GlassPanel>
-      </div>
+
 
       {/* Row 2: Gauges/Funnel + Channel performance or Empty State */}
       {!loading && (!stats || stats.total_customers === 0) ? (

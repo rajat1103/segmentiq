@@ -7,8 +7,6 @@ import {
   ArrowUpRight, Play, Plus, UserPlus, Calendar,
   Upload, Server, Database, Loader2,
 } from "lucide-react";
-import { getStats, getCampaigns, seedDatabase, resetDatabase } from "../services/api";
-import PlasmaGlobe from "../components/PlasmaGlobe";
 import { useAuth } from "../context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
 import CSVUploadModal from "../components/CSVUploadModal";
@@ -354,7 +352,7 @@ export default function CommandCenter() {
           background: "rgba(16,185,129,0.02)", bottom: -40, right: 40,
         }} />
 
-        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ position: "relative" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
               <div style={{
@@ -422,35 +420,6 @@ export default function CommandCenter() {
                 <Plus size={13} /> New Campaign
               </button>
             </div>
-          </div>
-
-          {/* Right: 3D Plasma Globe */}
-          <div style={{
-            width: "320px",
-            height: "220px",
-            background: "rgba(15,23,42,0.06)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.30)",
-            borderRadius: "16px",
-            overflow: "hidden",
-            flexShrink: 0,
-            position: "relative",
-          }}>
-            <div style={{
-              position: "absolute", top: 8, left: 12,
-              fontSize: "9px", fontWeight: 700,
-              textTransform: "uppercase", letterSpacing: "0.08em",
-              color: "rgba(255,255,255,0.60)",
-              zIndex: 2,
-            }}>Global Expansion</div>
-            <Suspense fallback={
-              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #f9a8d4", borderTop: "2px solid transparent", animation: "spin 0.8s linear infinite" }} />
-              </div>
-            }>
-              <PlasmaGlobe height="220px" />
-            </Suspense>
           </div>
         </div>
       </div>
